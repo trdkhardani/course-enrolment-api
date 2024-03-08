@@ -44,7 +44,7 @@ class DatabaseSeeder extends Seeder
             [
                 // 'name' => 'The Admin',
                 'user_id_number' => '85712364821',
-                'email' => 'admin@mail.com',
+                'email' => 'admin_it@mail.com',
                 'user_role' => 'admin',
             ]
         );
@@ -58,9 +58,24 @@ class DatabaseSeeder extends Seeder
             ]
         );
 
+        User::factory()->create( // id 5
+            [
+                // 'name' => 'The Admin',
+                'user_id_number' => '85513412512',
+                'email' => 'admin_cs@mail.com',
+                'user_role' => 'admin',
+            ]
+        );
+
         Department::factory()->create(
             [
                 'department_name' => "Information Technology"
+            ]
+        );
+
+        Department::factory()->create(
+            [
+                'department_name' => "Computer Science"
             ]
         );
 
@@ -97,7 +112,14 @@ class DatabaseSeeder extends Seeder
                 'department_id' => 1,
                 'user_id' => 3,
             ]
-            );
+        );
+
+        Admin::factory()->create(
+            [
+                'department_id' => 2,
+                'user_id' => 5,
+            ]
+        );
 
         Course::factory()->create(
             [

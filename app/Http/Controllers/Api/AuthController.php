@@ -35,8 +35,7 @@ class AuthController extends Controller
                 'department' => Auth()->user()->student->department->department_name,
                 'token' => $token->plainTextToken
             ], 200);
-        }
-        elseif (Auth::attempt($credentials) && Auth()->user()->user_role === 'advisor') {
+        } elseif (Auth::attempt($credentials) && Auth()->user()->user_role === 'advisor') {
             return response()->json([
                 'status' => 1,
                 'message' => "Welcome " . Auth()->user()->advisor->advisor_name,
@@ -44,8 +43,7 @@ class AuthController extends Controller
                 'department' => Auth()->user()->advisor->department->department_name,
                 'token' => $token->plainTextToken
             ], 200);
-        }
-        elseif (Auth::attempt($credentials) && Auth()->user()->user_role === 'admin') {
+        } elseif (Auth::attempt($credentials) && Auth()->user()->user_role === 'admin') {
             return response()->json([
                 'status' => 1,
                 'message' => "Welcome Admin of " . Auth()->user()->admin->department->department_name . " Department",
@@ -53,6 +51,5 @@ class AuthController extends Controller
                 'token' => $token->plainTextToken
             ], 200);
         }
-
     }
 }

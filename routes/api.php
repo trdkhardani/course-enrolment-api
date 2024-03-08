@@ -2,8 +2,11 @@
 
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\StudentController;
+use App\Http\Controllers\Api\Admin\AdminController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
+
+use App\Http\Middleware\IsAdmin;
 
 /*
 |--------------------------------------------------------------------------
@@ -25,6 +28,10 @@ Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
 Route::post('login', [AuthController::class, 'authLogin']);
 
 Route::apiResource('student', StudentController::class);
-// Route::get('test/{student_id}', [StudentController::class, 'show']);
 
-// Route::get('test-show/{student_id}', [TestShowController::class, 'showBoskuh']);
+Route::middleware('auth:sanctum')->group(function(){
+    Route::middleware(IsAdmin::class)->group(function(){
+        Route::post('admin/create-course', [AdminController::class, 'store']);
+        Route::get('admin/courses-list', [AdminController::class, 'index']);
+    });
+});

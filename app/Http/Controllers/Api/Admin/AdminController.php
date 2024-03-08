@@ -5,6 +5,8 @@ namespace App\Http\Controllers\Api\Admin;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 
+use App\Models\Course;
+
 class AdminController extends Controller
 {
     /**
@@ -12,7 +14,13 @@ class AdminController extends Controller
      */
     public function index()
     {
-        //
+        $dept_id = Auth()->user()->admin->department->department_id;
+        $courses = Course::all()->where('department_id', $dept_id);
+
+        return response()->json([
+            'status' => 1,
+            'courses_data' => $courses,
+        ]);
     }
 
     /**
@@ -20,7 +28,23 @@ class AdminController extends Controller
      */
     public function store(Request $request)
     {
-        //
+        $courseData = $request->validate([
+            'course_name' => 'required',
+            'course_code' => 'required',
+            'course_class' => 'required',
+            'course_capacity' => 'required',
+            'course_credits' => 'required',
+            // 'department_id' => 'required'
+        ]);
+
+        $courseData['department_id'] = Auth()->user()->admin->department->department_id;
+
+        $course = Course::create($courseData);
+
+        return response()->json([
+            'status' => 1,
+            'course' => $course
+        ]);
     }
 
     /**
