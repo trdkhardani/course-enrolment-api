@@ -27,12 +27,14 @@ Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
 
 Route::post('login', [AuthController::class, 'authLogin']);
 
-Route::apiResource('student', StudentController::class);
+// Route::apiResource('student', StudentController::class);
 
 Route::middleware('auth:sanctum')->group(function(){
     Route::middleware(IsAdmin::class)->group(function(){
-        Route::post('admin/create-course', [AdminController::class, 'store']);
         Route::get('admin/courses-list', [AdminController::class, 'index']);
+        Route::post('admin/create-course', [AdminController::class, 'store']);
         Route::post('admin/change-course-availability/{course_code}/{status}', [AdminController::class, 'changeCourseAvailability']);
     });
+    Route::get('student', [StudentController::class, 'index']);
+    Route::get('student/courses', [StudentController::class, '']);
 });

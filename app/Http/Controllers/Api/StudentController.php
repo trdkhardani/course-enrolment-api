@@ -28,15 +28,51 @@ class StudentController extends Controller
      */
     public function index()
     {
-        $students = Student::all();
+        $studId = Auth()->user()->student->student_id;
 
-        foreach ($students as $student) {
-            $studentsData[] = [
-                ''
+        $student = Student::findOrFail($studId);
+
+        $studentCourses = $student->findOrFail($studId)->course()->where('course_semester_taken', $student->student_semester - 1)->get();
+
+        foreach ($studentCourses as $studentCourse) {
+            // $studentCourse->pivot->course_semester_taken;
+            $studentCourseData[] = [
+                'course' => $studentCourse->course_name,
+                'grade' => $studentCourse->pivot->grade,
+                'credits' => $studentCourse->course_credits,
+                'credits * grade' => $studentCourse->pivot->grade * $studentCourse->course_credits
             ];
         }
 
-        return response()->json([]);
+        $totalCGProduct = 0;
+
+        foreach ($studentCourseData as $courseData) {
+            $totalCGProduct += $courseData['credits * grade'];
+        }
+
+        $gpa = number_format((float)$totalCGProduct / $studentCourses->sum('course_credits'), 2, '.', '');
+
+        if ($gpa < 2.5) {
+            $credits_limit = 18;
+        } elseif ($gpa >= 2.5 && $gpa < 3) {
+            $credits_limit = 20;
+        } elseif ($gpa >= 3 && $gpa < 3.5) {
+            $credits_limit = 22;
+        } else {
+            $credits_limit = 24;
+        }
+
+        return response()->json([
+            'name' => $student->student_name,
+            'student_id' => $student->user->user_id_number,
+            'advisor_name' => $student->advisor->advisor_name,
+            'credits_total' => $studentCourses->sum('course_credits'),
+            'courses' => $studentCourseData,
+            'c_g_sum' => $totalCGProduct,
+            'gpa' => $gpa,
+            'semester' => $student->student_semester,
+            'credits_limit' => $credits_limit
+        ]);
     }
 
     /**
@@ -91,6 +127,7 @@ class StudentController extends Controller
             'courses' => $studentCourseData,
             'c_g_sum' => $totalCGProduct,
             'gpa' => $gpa,
+            'semester' => $student->student_semester,
             'credits_limit' => $credits_limit
         ]);
     }
