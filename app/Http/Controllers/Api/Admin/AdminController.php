@@ -47,15 +47,15 @@ class AdminController extends Controller
         ]);
     }
 
-    public function changeCourseAvailability($courseCode, $status)
+    public function changeCourseAvailability($courseCode, $courseClass, $status)
     {
         $dept_id = Auth()->user()->admin->department->department_id;
-        $course = Course::firstWhere('course_code', $courseCode);
+        $course = Course::where('course_code', $courseCode)->firstWhere('course_class', $courseClass);
 
         if ($course === null) {
             return response()->json([
                 'status' => 0,
-                'message' => "The " . $courseCode . " course does not exist"
+                'message' => "The " . $courseCode . " course or the class does not exist"
             ], 404);
         } elseif ($dept_id !== $course->department->department_id) {
             return response()->json([

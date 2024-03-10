@@ -14,5 +14,16 @@ class StudentCourse extends Model
         'course_id',
         'course_semester_taken',
         'grade',
+        'status',
     ];
+
+    // public function course()
+    // {
+    //     return $this->hasMany(Course::class);
+    // }
+
+    // public function student()
+    // {
+    //     return $this->hasMany(Student::class);
+    // }
 }

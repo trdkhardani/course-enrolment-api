@@ -6,6 +6,8 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 
 use App\Models\Student;
+use App\Models\Course;
+use App\Models\StudentCourse;
 
 class StudentController extends Controller
 {
@@ -72,6 +74,71 @@ class StudentController extends Controller
             'gpa' => $gpa,
             'semester' => $student->student_semester,
             'credits_limit' => $credits_limit
+        ]);
+    }
+
+    public function availableCourses()
+    {
+        $dept_id = Auth()->user()->student->department->department_id;
+
+        $courses = Course::where('department_id', $dept_id)->where('course_is_open', 1)->get();
+
+        foreach($courses as $course){
+            $courseData[] = [
+                'course_name' => $course->course_name,
+                'course_code' => $course->course_code,
+                'course_class' => $course->course_class,
+                'course_capacity' => $course->course_capacity,
+                'course_credits' => $course->course_credits,
+            ];
+        }
+
+        return response()->json([
+            'status' => 1,
+            'courses' => $courseData,
+        ]);
+    }
+
+    public function takeCourse(Request $request)
+    {
+        $courseData = $request->validate([
+            'course_id' => 'required',
+            // 'course_class' => 'required',
+        ]);
+
+        $courseData['student_id'] = Auth()->user()->student->student_id;
+        // $courseData['course_id'] = Auth()->user()->student->student_id;
+        $courseData['course_semester_taken'] = Auth()->user()->student->student_semester;
+        $courseData['status'] = 'taken';
+
+        $course = StudentCourse::create($courseData);
+
+        return response()->json([
+            'status' => 1,
+            'course' => $course,
+        ]);
+    }
+
+    public function showCurrentCourses()
+    {
+        $studId = Auth()->user()->student->student_id;
+        $studCurrentSemester = Auth()->user()->student->student_semester;
+
+        $currentCourses = Student::findOrFail($studId)->course()->where('course_semester_taken', $studCurrentSemester)->get();
+
+        foreach($currentCourses as $currentCourse){
+            $currentCourseData[] = [
+                'course_name' => $currentCourse->course_name,
+                'course_code' => $currentCourse->course_code,
+                'course_class' => $currentCourse->course_class,
+                'course_credits' => $currentCourse->course_credits,
+            ];
+        }
+
+        return response()->json([
+            'status' => 1,
+            'courses' => $currentCourseData,
+            'credits_total' => $currentCourses->sum('course_credits'),
         ]);
     }
 

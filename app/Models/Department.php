@@ -29,6 +29,6 @@ class Department extends Model
 
     public function courses()
     {
-        return $this->hasMany(Courses::class, 'department_id');
+        return $this->hasMany(Course::class, 'department_id');
     }
 }

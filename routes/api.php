@@ -33,8 +33,10 @@ Route::middleware('auth:sanctum')->group(function(){
     Route::middleware(IsAdmin::class)->group(function(){
         Route::get('admin/courses-list', [AdminController::class, 'index']);
         Route::post('admin/create-course', [AdminController::class, 'store']);
-        Route::post('admin/change-course-availability/{course_code}/{status}', [AdminController::class, 'changeCourseAvailability']);
+        Route::post('admin/change-course-availability/{course_code}/{course_class}/{status}', [AdminController::class, 'changeCourseAvailability']);
     });
     Route::get('student', [StudentController::class, 'index']);
-    Route::get('student/courses', [StudentController::class, '']);
+    Route::get('student/courses', [StudentController::class, 'availableCourses']);
+    Route::post('student/take-course', [StudentController::class, 'takeCourse']);
+    Route::get('student/current-courses', [StudentController::class, 'showCurrentCourses']);
 });
