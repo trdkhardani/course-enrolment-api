@@ -81,14 +81,18 @@ class StudentController extends Controller
     {
         $dept_id = Auth()->user()->student->department->department_id;
 
-        $courses = Course::where('department_id', $dept_id)->where('course_is_open', 1)->get();
+        $courses = Course::findOrFail($dept_id)->where('course_is_open', 1)->get();
 
-        foreach($courses as $course){
+        $studentTotal = fn ($courseId) => StudentCourse::where('course_id', $courseId)->where('status', 'taken')->orWhere('status', 'enrolled')->count('course_id');
+        // Query => SELECT COUNT(course_id) AS course_total_students FROM student_courses WHERE course_id LIKE $courseId AND status LIKE 'taken' AND status LIKE 'enrolled';
+
+        foreach ($courses as $course) {
             $courseData[] = [
+                // 'course_id' => $course->course_id,
                 'course_name' => $course->course_name,
                 'course_code' => $course->course_code,
                 'course_class' => $course->course_class,
-                'course_capacity' => $course->course_capacity,
+                'course_total_students' => $studentTotal($course->course_id) . " / " . $course->course_capacity,
                 'course_credits' => $course->course_credits,
             ];
         }
@@ -96,26 +100,39 @@ class StudentController extends Controller
         return response()->json([
             'status' => 1,
             'courses' => $courseData,
+            // 'course_seat_left' => $studentTotal,
         ]);
     }
 
     public function takeCourse(Request $request)
     {
         $courseData = $request->validate([
-            'course_id' => 'required',
-            // 'course_class' => 'required',
+            'course_id' => 'required'
         ]);
 
+        $course = Course::find($courseData['course_id']);
+
         $courseData['student_id'] = Auth()->user()->student->student_id;
-        // $courseData['course_id'] = Auth()->user()->student->student_id;
         $courseData['course_semester_taken'] = Auth()->user()->student->student_semester;
         $courseData['status'] = 'taken';
 
-        $course = StudentCourse::create($courseData);
+        // If course is full
+        if (
+            $course->course_capacity <= StudentCourse::where('course_id', $courseData['course_id'])
+            ->whereIn('status', ['taken', 'enrolled'])
+            ->count()
+        ) {
+            return response()->json([
+                'status' => 0,
+                'message' => "This course is full"
+            ], 409);
+        }
 
+        $takenCourse = StudentCourse::create($courseData);
         return response()->json([
             'status' => 1,
-            'course' => $course,
+            'course' => $takenCourse,
+            'cap' => $course->course_capacity
         ]);
     }
 
@@ -126,7 +143,7 @@ class StudentController extends Controller
 
         $currentCourses = Student::findOrFail($studId)->course()->where('course_semester_taken', $studCurrentSemester)->get();
 
-        foreach($currentCourses as $currentCourse){
+        foreach ($currentCourses as $currentCourse) {
             $currentCourseData[] = [
                 'course_name' => $currentCourse->course_name,
                 'course_code' => $currentCourse->course_code,

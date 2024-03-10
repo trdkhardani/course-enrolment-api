@@ -19,7 +19,7 @@ class Course extends Model
 
     public function student()
     {
-        return $this->belongsToMany(Course::class, 'student_courses', 'course_id', 'student_id')
+        return $this->belongsToMany(Student::class, 'student_courses', 'course_id', 'student_id')
         ->withPivot('course_semester_taken', 'grade', 'status');
     }
 }
