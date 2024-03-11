@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\StudentController;
+use App\Http\Controllers\Api\AdvisorController;
 use App\Http\Controllers\Api\Admin\AdminController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -41,4 +42,7 @@ Route::middleware('auth:sanctum')->group(function(){
     // Route::get('student/drop-course/{course_id}', [StudentController::class, 'dropCourse']);
     Route::delete('student/drop-course/{course_id}', [StudentController::class, 'dropCourse']);
     Route::get('student/current-courses', [StudentController::class, 'showCurrentCourses']);
+
+    Route::patch('advisor/accept-student-courses/{student_id}', [AdvisorController::class, 'acceptCourses']);
+    Route::patch('advisor/cancel-student-courses/{student_id}', [AdvisorController::class, 'cancelAcceptCourses']);
 });
