@@ -112,19 +112,39 @@ class StudentController extends Controller
 
         $course = Course::find($courseData['course_id']);
 
+
         $courseData['student_id'] = Auth()->user()->student->student_id;
         $courseData['course_semester_taken'] = Auth()->user()->student->student_semester;
         $courseData['status'] = 'taken';
 
-        // If course is full
-        if (
+        $student = Student::where('student_id', $courseData['student_id'])->first();
+        $studentCourses = $student->course;
+
+        foreach ($studentCourses as $studentCourse) {
+            $courseCodeData = [
+                'course_code' => $studentCourse->course_code
+            ];
+        }
+
+        if ($studentCourses->where('course_code', $course->course_code)->isNotEmpty()) { // If course has already taken by the logged in student
+            return response()->json([
+                'status' => 0,
+                'message' => "You are already taken this course",
+                'course_code' => $course->course_code,
+                // 'test' => Course::where('course_code', $course->course_code)->get()
+                'testLeft' => $course->course_code, // For debugging, will delete later
+                'testRight' => $courseCodeData['course_code'], // For debugging, will delete later
+                'testData' => $courseCodeData // For debugging, will delete later
+            ]);
+        } elseif ( // If course is full
             $course->course_capacity <= StudentCourse::where('course_id', $courseData['course_id'])
             ->whereIn('status', ['taken', 'enrolled'])
             ->count()
         ) {
             return response()->json([
                 'status' => 0,
-                'message' => "This course is full"
+                'message' => "This course is full",
+                'course_code' => $course->course_code,
             ], 409);
         }
 

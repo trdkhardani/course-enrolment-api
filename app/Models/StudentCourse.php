@@ -17,13 +17,13 @@ class StudentCourse extends Model
         'status',
     ];
 
-    // public function course()
-    // {
-    //     return $this->hasMany(Course::class);
-    // }
+    public function course()
+    {
+        return $this->belongsTo(Course::class, 'course_id');
+    }
 
-    // public function student()
-    // {
-    //     return $this->hasMany(Student::class);
-    // }
+    public function student()
+    {
+        return $this->belongsTo(Student::class, 'student_id');
+    }
 }
