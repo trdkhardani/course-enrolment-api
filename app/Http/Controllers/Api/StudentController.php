@@ -210,6 +210,9 @@ class StudentController extends Controller
 
         $currentCourses = Student::findOrFail($studId)->course()->where('course_semester_taken', $studCurrentSemester)->get();
 
+        $coursesEnrolmentPending = Student::findOrFail($studId)->course()->firstWhere('status', 'taken');
+        $coursesEnrolmentAccepted = Student::findOrFail($studId)->course()->firstWhere('status', 'enrolled');
+
         foreach ($currentCourses as $currentCourse) {
             $currentCourseData[] = [
                 'course_name' => $currentCourse->course_name,
@@ -219,10 +222,17 @@ class StudentController extends Controller
             ];
         }
 
+        if ($coursesEnrolmentPending) {
+            $enrolmentStatus = 'pending';
+        } elseif ($coursesEnrolmentAccepted) {
+            $enrolmentStatus = 'enrolled';
+        }
+
         return response()->json([
             'status' => 1,
             'courses' => $currentCourseData,
             'credits_total' => $currentCourses->sum('course_credits'),
+            'enrolment_status' => $enrolmentStatus
         ]);
     }
 
