@@ -177,7 +177,7 @@ class StudentController extends Controller
                 'testData2_credits_limit' => $credits_limit, // For debugging, will delete later
                 'testData2_sum_course_credits' => $studentCurrentCourses->sum('course_credits'), // For debugging, will delete later
                 'testData2_sum_selected_course_credits' => $course->course_credits, // For debugging, will delete later
-            ]);
+            ], 409);
         } elseif ( // If course is full
             $course->course_capacity <= StudentCourse::where('course_id', $courseData['course_id'])
             ->whereIn('status', ['taken', 'enrolled'])
@@ -192,7 +192,7 @@ class StudentController extends Controller
             return response()->json([
                 'status' => 0,
                 'message' => "You have reached your credit limit"
-            ]);
+            ], 409);
         }
 
         $takenCourse = StudentCourse::create($courseData);
@@ -200,7 +200,7 @@ class StudentController extends Controller
             'status' => 1,
             'course' => $takenCourse,
             'cap' => $course->course_capacity
-        ]);
+        ], 201);
     }
 
     public function showCurrentCourses()
@@ -239,48 +239,6 @@ class StudentController extends Controller
      */
     public function show($studId)
     {
-        $student = Student::findOrFail($studId);
-
-        $studentCourses = $student->findOrFail($studId)->course;
-
-        foreach ($studentCourses as $studentCourse) {
-            $studentCourseData[] = [
-                'course' => $studentCourse->course_name,
-                'grade' => $studentCourse->pivot->grade,
-                'credits' => $studentCourse->course_credits,
-                'credits * grade' => $studentCourse->pivot->grade * $studentCourse->course_credits
-            ];
-        }
-
-        $totalCGProduct = 0;
-
-        foreach ($studentCourseData as $courseData) {
-            $totalCGProduct += $courseData['credits * grade'];
-        }
-
-        $gpa = $totalCGProduct / $studentCourses->sum('course_credits');
-
-        if ($gpa < 2.5) {
-            $credits_limit = 18;
-        } elseif ($gpa >= 2.5 && $gpa < 3) {
-            $credits_limit = 20;
-        } elseif ($gpa >= 3 && $gpa < 3.5) {
-            $credits_limit = 22;
-        } else {
-            $credits_limit = 24;
-        }
-
-        return response()->json([
-            'name' => $student->student_name,
-            'student_id' => $student->user->user_id_number,
-            'advisor_name' => $student->advisor->advisor_name,
-            'credits_total' => $studentCourses->sum('course_credits'),
-            'courses' => $studentCourseData,
-            'c_g_sum' => $totalCGProduct,
-            'gpa' => $gpa,
-            'semester' => $student->student_semester,
-            'credits_limit' => $credits_limit
-        ]);
     }
 
     /**
@@ -294,8 +252,25 @@ class StudentController extends Controller
     /**
      * Remove the specified resource from storage.
      */
-    public function destroy(string $id)
+    public function dropCourse($courseId)
     {
-        //
+        $studId = Auth()->user()->student->student_id;
+        $course = StudentCourse::where('course_id', $courseId)
+            ->where('student_id', $studId)
+            ->where('status', 'taken') // Can only drop course that the status is 'taken'
+            ->delete();
+        // $course = Student::find($studId)->course()->detach($courseId); // Applies the same as $course
+
+        if ($course == null) {
+            return response()->json([
+                'status' => $course, // will return true or false
+                'message' => "Course not found or may have been accepted by your advisor"
+            ], 409);
+        }
+
+        return response()->json([
+            'status' => $course, // will return true or false
+            'message' => "Course dropped successfully"
+        ]);
     }
 }
