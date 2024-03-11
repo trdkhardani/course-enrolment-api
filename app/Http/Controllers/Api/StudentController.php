@@ -120,11 +120,50 @@ class StudentController extends Controller
         $student = Student::where('student_id', $courseData['student_id'])->first();
         $studentCourses = $student->course;
 
+        /** Current Semester Courses */
+        $studentCurrent = Student::findOrFail($courseData['student_id']);
+        $studentCurrentCourses = $studentCurrent->findOrFail($courseData['student_id'])->course()->where('course_semester_taken', $student->student_semester)->whereIn('status', ['taken', 'enrolled'])->get();
+        /** END */
+
         foreach ($studentCourses as $studentCourse) {
             $courseCodeData = [
                 'course_code' => $studentCourse->course_code
             ];
         }
+
+        /** Calculate GPA Credits Limit */
+        $studentCreditsLimit = Student::findOrFail($courseData['student_id']);
+
+        $studentCoursesCreditsLimit = $studentCreditsLimit->findOrFail($courseData['student_id'])->course()->where('course_semester_taken', $student->student_semester - 1)->get();
+
+        foreach ($studentCoursesCreditsLimit as $studentCourse) {
+            // $studentCourse->pivot->course_semester_taken;
+            $studentCourseData[] = [
+                'course' => $studentCourse->course_name,
+                'grade' => $studentCourse->pivot->grade,
+                'credits' => $studentCourse->course_credits,
+                'credits * grade' => $studentCourse->pivot->grade * $studentCourse->course_credits
+            ];
+        }
+
+        $totalCGProduct = 0;
+
+        foreach ($studentCourseData as $studCourseData) {
+            $totalCGProduct += $studCourseData['credits * grade'];
+        }
+
+        $gpa = number_format((float)$totalCGProduct / $studentCoursesCreditsLimit->sum('course_credits'), 2, '.', '');
+
+        if ($gpa < 2.5) {
+            $credits_limit = 18;
+        } elseif ($gpa >= 2.5 && $gpa < 3) {
+            $credits_limit = 20;
+        } elseif ($gpa >= 3 && $gpa < 3.5) {
+            $credits_limit = 22;
+        } else {
+            $credits_limit = 24;
+        }
+        /** END */
 
         if ($studentCourses->where('course_code', $course->course_code)->isNotEmpty()) { // If course has already taken by the logged in student
             return response()->json([
@@ -134,7 +173,10 @@ class StudentController extends Controller
                 // 'test' => Course::where('course_code', $course->course_code)->get()
                 'testLeft' => $course->course_code, // For debugging, will delete later
                 'testRight' => $courseCodeData['course_code'], // For debugging, will delete later
-                'testData' => $courseCodeData // For debugging, will delete later
+                'testData' => $courseCodeData, // For debugging, will delete later
+                'testData2_credits_limit' => $credits_limit, // For debugging, will delete later
+                'testData2_sum_course_credits' => $studentCurrentCourses->sum('course_credits'), // For debugging, will delete later
+                'testData2_sum_selected_course_credits' => $course->course_credits, // For debugging, will delete later
             ]);
         } elseif ( // If course is full
             $course->course_capacity <= StudentCourse::where('course_id', $courseData['course_id'])
@@ -146,6 +188,11 @@ class StudentController extends Controller
                 'message' => "This course is full",
                 'course_code' => $course->course_code,
             ], 409);
+        } elseif ($studentCurrentCourses->sum('course_credits') + $course->course_credits > $credits_limit) { // If a student trying to take course more than the given limit
+            return response()->json([
+                'status' => 0,
+                'message' => "You have reached your credit limit"
+            ]);
         }
 
         $takenCourse = StudentCourse::create($courseData);
