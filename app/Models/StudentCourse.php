@@ -4,10 +4,16 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+// use App\Models\Traits\HasCompositePrimaryKey;
 
 class StudentCourse extends Model
 {
     use HasFactory;
+    // use HasCompositePrimaryKey;
+
+    protected $primaryKey = 'student_id';
+    // protected $primaryKey = 'course_id';
+    public $incrementing = false;
 
     protected $fillable = [
         'student_id',

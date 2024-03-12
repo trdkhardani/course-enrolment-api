@@ -25,7 +25,7 @@ class AdvisorController extends Controller
 
         $student = Student::where('student_id', $studId)->firstWhere('advisor_id', $advisorId);
 
-        if($student == null){
+        if ($student == null) {
             return response()->json([
                 'status' => 0,
                 'message' => "Student not found"
@@ -50,7 +50,7 @@ class AdvisorController extends Controller
 
         $student = Student::where('student_id', $studId)->firstWhere('advisor_id', $advisorId);
 
-        if($student == null){
+        if ($student == null) {
             return response()->json([
                 'status' => 0,
                 'message' => "Student not found"
@@ -96,8 +96,33 @@ class AdvisorController extends Controller
     /**
      * Remove the specified resource from storage.
      */
-    public function destroy(string $id)
+    public function dropCourse($studId, $courseId)
     {
-        //
+        $advisorId = Auth()->user()->advisor->advisor_id;
+
+        // $student = Student::where('student_id', $studId)->firstWhere('advisor_id', $advisorId)->first();
+
+        $studentCourseAdvisorId = StudentCourse::findOrFail($studId)->student->advisor->advisor_id;
+        // $studentCourseAdvisorDept = StudentCourse::findOrFail($courseId)->course->course_id;
+
+        $course = StudentCourse::where('course_id', $courseId)
+            ->where('student_id', $studId)
+            ->where('status', 'taken')
+            ->delete();
+
+        if($advisorId !== $studentCourseAdvisorId){
+            return response()->json([
+                'status' => $course,
+                'message' => "You are not the advisor of this student"
+            ]);
+        }
+
+        return response()->json([
+            'status' => $course,
+            'message' => "Course dropped successfully",
+            'advisor_id' => $advisorId,
+            'student_course_advisor_id' => $studentCourseAdvisorId, // For debugging, will delete later
+            // 'course_id' => $studentCourseAdvisorDept // For debugging, will delete later
+        ]);
     }
 }

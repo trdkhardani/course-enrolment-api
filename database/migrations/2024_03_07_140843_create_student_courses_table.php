@@ -24,6 +24,9 @@ return new class extends Migration
              */
             $table->timestamps();
 
+            // Define PK
+            $table->primary(['student_id', 'course_id']);
+
             // Define FK
             $table->foreign('student_id')->references('student_id')->on('students')->onDelete('cascade');
             $table->foreign('course_id')->references('course_id')->on('courses')->onDelete('cascade');
