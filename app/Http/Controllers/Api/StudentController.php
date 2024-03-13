@@ -164,8 +164,12 @@ class StudentController extends Controller
             $credits_limit = 24;
         }
         /** END */
-
-        if ($studentCourses->where('course_code', $course->course_code)->isNotEmpty()) { // If course has already taken by the logged in student
+        if (StudentCourse::find($courseData['student_id'])->where('course_semester_taken', $courseData['course_semester_taken'])->firstWhere('status', 'enrolled')) { // If the selected courses has been accepted by the advisor
+            return response()->json([
+                'status' => 0,
+                'message' => "Your selected courses has already been accepted by your advisor"
+            ], 409);
+        } elseif ($studentCourses->where('course_code', $course->course_code)->isNotEmpty()) { // If course has already taken by the logged in student
             return response()->json([
                 'status' => 0,
                 'message' => "You are already taken this course",
