@@ -114,6 +114,7 @@ class StudentController extends Controller
 
 
         $courseData['student_id'] = Auth()->user()->student->student_id;
+        $courseData['student_id_number'] = Auth()->user()->user_id_number;
         $courseData['course_semester_taken'] = Auth()->user()->student->student_semester;
         $courseData['status'] = 'taken';
 
@@ -251,8 +252,45 @@ class StudentController extends Controller
     /**
      * Display the specified resource.
      */
-    public function show($studId)
+    public function showCourseDetail($courseId)
     {
+        $course = Course::findOrFail($courseId);
+
+        $totalEnrolledStudents = $course->student()
+        ->where([
+            ['course_id', '=', $courseId],
+            ['status', '=', 'taken'],
+        ])->count();
+
+        $enrolledStudents = $course->student()
+        ->where([
+            ['course_id', '=', $courseId],
+            ['status', '=', 'taken'],
+        ])->get();
+
+        foreach($enrolledStudents as $enrolledStudent){
+            $enrolledStudentData[] = [
+                'student_name' => $enrolledStudent->student_name,
+                'student_id_number' => $enrolledStudent->pivot->student_id_number,
+            ];
+        }
+
+        // Check whether the course is open, closed, or full
+        if($course->course_is_open === 0){
+            $courseStatus = "Closed";
+        } elseif($totalEnrolledStudents === $course->course_capacity){
+            $courseStatus = "Full";
+        } else{
+            $courseStatus = "Open";
+        }
+
+        return response()->json([
+            'course_name' => $course->course_name,
+            'course_class' => $course->course_class,
+            'total_enrolled_students' => $totalEnrolledStudents . " / " . $course->course_capacity,
+            'course_status' => $courseStatus,
+            'enrolled_students' => $enrolledStudentData,
+        ]);
     }
 
     /**

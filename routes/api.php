@@ -42,6 +42,7 @@ Route::middleware('auth:sanctum')->group(function(){
     // Route::get('student/drop-course/{course_id}', [StudentController::class, 'dropCourse']);
     Route::delete('student/drop-course/{course_id}', [StudentController::class, 'dropCourse']);
     Route::get('student/current-courses', [StudentController::class, 'showCurrentCourses']);
+    Route::get('student/course-detail/{course_id}', [StudentController::class, 'showCourseDetail']);
 
     Route::patch('advisor/accept-student-courses/{student_id}', [AdvisorController::class, 'acceptCourses']);
     Route::patch('advisor/cancel-student-courses/{student_id}', [AdvisorController::class, 'cancelAcceptCourses']);
