@@ -114,7 +114,6 @@ class StudentController extends Controller
 
 
         $courseData['student_id'] = Auth()->user()->student->student_id;
-        $courseData['student_id_number'] = Auth()->user()->user_id_number;
         $courseData['course_semester_taken'] = Auth()->user()->student->student_semester;
         $courseData['status'] = 'taken';
 
@@ -271,7 +270,7 @@ class StudentController extends Controller
         foreach($enrolledStudents as $enrolledStudent){
             $enrolledStudentData[] = [
                 'student_name' => $enrolledStudent->student_name,
-                'student_id_number' => $enrolledStudent->pivot->student_id_number,
+                'student_id_number' => $enrolledStudent->user->user_id_number,
             ];
         }
 

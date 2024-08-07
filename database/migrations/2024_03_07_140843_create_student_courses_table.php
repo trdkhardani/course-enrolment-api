@@ -13,7 +13,6 @@ return new class extends Migration
     {
         Schema::create('student_courses', function (Blueprint $table) {
             $table->unsignedBigInteger('student_id');
-            $table->string('student_id_number');
             $table->unsignedBigInteger('course_id');
             $table->tinyInteger('course_semester_taken');
             $table->decimal('grade')->nullable();
