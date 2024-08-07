@@ -16,7 +16,27 @@ class AdvisorController extends Controller
      */
     public function index()
     {
-        //
+        // Get advisor_id
+        $advisorId = Auth()->user()->advisor->advisor_id;
+
+        // Get logged in advisor's data
+        $advisorInfo = Advisor::findOrFail($advisorId);
+
+        // Get logged in advisor's students
+        $students = Student::where('advisor_id', $advisorId)->get();
+
+        foreach($students as $student){
+            $studentData[] = [
+                'student_name' => $student->student_name,
+                'student_id_number' => $student->user->user_id_number,
+            ];
+        }
+
+        return response()->json([
+            'advisor_name' => $advisorInfo->advisor_name,
+            'advisor_id_number' => Auth()->user()->user_id_number,
+            'students' => $studentData,
+        ]);
     }
 
     public function acceptCourses($studId)
