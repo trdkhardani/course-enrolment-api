@@ -9,22 +9,10 @@ use App\Models\Student;
 use App\Models\Course;
 use App\Models\StudentCourse;
 
+use App\Http\Controllers\Others\CalculateGPAController;
+
 class StudentController extends Controller
 {
-    public function calculateGPA($id)
-    {
-        /**
-         * course_credits * grade / sum_credits
-         */
-
-        $student = Student::find($id);
-        $studentGrades = $student->firstWhere('student_id', $id)->course;
-
-        foreach ($studentGrades as $studentGrade) {
-            $studentGradesData[] = [];
-        }
-    }
-
     /**
      * Display a listing of the resource.
      */
@@ -34,46 +22,19 @@ class StudentController extends Controller
 
         $student = Student::findOrFail($studId);
 
-        $studentCourses = $student->findOrFail($studId)->course()->where('course_semester_taken', $student->student_semester - 1)->get();
-
-        foreach ($studentCourses as $studentCourse) {
-            // $studentCourse->pivot->course_semester_taken;
-            $studentCourseData[] = [
-                'course' => $studentCourse->course_name,
-                'grade' => $studentCourse->pivot->grade,
-                'credits' => $studentCourse->course_credits,
-                'credits * grade' => $studentCourse->pivot->grade * $studentCourse->course_credits
-            ];
-        }
-
-        $totalCGProduct = 0;
-
-        foreach ($studentCourseData as $courseData) {
-            $totalCGProduct += $courseData['credits * grade'];
-        }
-
-        $gpa = number_format((float)$totalCGProduct / $studentCourses->sum('course_credits'), 2, '.', '');
-
-        if ($gpa < 2.5) {
-            $credits_limit = 18;
-        } elseif ($gpa >= 2.5 && $gpa < 3) {
-            $credits_limit = 20;
-        } elseif ($gpa >= 3 && $gpa < 3.5) {
-            $credits_limit = 22;
-        } else {
-            $credits_limit = 24;
-        }
+        $calculateGPA = new CalculateGPAController();
+        $calculateGPAResult = $calculateGPA->calculateGPA($studId);
 
         return response()->json([
             'name' => $student->student_name,
             'student_id' => $student->user->user_id_number,
             'advisor_name' => $student->advisor->advisor_name,
-            'credits_total' => $studentCourses->sum('course_credits'),
-            'courses' => $studentCourseData,
-            'c_g_sum' => $totalCGProduct,
-            'gpa' => $gpa,
+            'credits_total' => $calculateGPAResult[0], // $studentCourses->sum('course_credits') from returned array in calculateGPA() method
+            'courses' => $calculateGPAResult[1], // $studentCourseData from returned array in calculateGPA() method
+            'c_g_sum' => $calculateGPAResult[2], // $totalCGProduct from returned array in calculateGPA() method
+            'gpa' => $calculateGPAResult[3], // $gpa from returned array in calculateGPA() method
             'semester' => $student->student_semester,
-            'credits_limit' => $credits_limit
+            'credits_limit' => $calculateGPAResult[4] // $credits_limit from returned array in calculateGPA() method
         ]);
     }
 
@@ -132,38 +93,11 @@ class StudentController extends Controller
         }
 
         /** Calculate GPA Credits Limit */
-        $studentCreditsLimit = Student::findOrFail($courseData['student_id']);
-
-        $studentCoursesCreditsLimit = $studentCreditsLimit->findOrFail($courseData['student_id'])->course()->where('course_semester_taken', $student->student_semester - 1)->get();
-
-        foreach ($studentCoursesCreditsLimit as $studentCourse) {
-            // $studentCourse->pivot->course_semester_taken;
-            $studentCourseData[] = [
-                'course' => $studentCourse->course_name,
-                'grade' => $studentCourse->pivot->grade,
-                'credits' => $studentCourse->course_credits,
-                'credits * grade' => $studentCourse->pivot->grade * $studentCourse->course_credits
-            ];
-        }
-
-        $totalCGProduct = 0;
-
-        foreach ($studentCourseData as $studCourseData) {
-            $totalCGProduct += $studCourseData['credits * grade'];
-        }
-
-        $gpa = number_format((float)$totalCGProduct / $studentCoursesCreditsLimit->sum('course_credits'), 2, '.', '');
-
-        if ($gpa < 2.5) {
-            $credits_limit = 18;
-        } elseif ($gpa >= 2.5 && $gpa < 3) {
-            $credits_limit = 20;
-        } elseif ($gpa >= 3 && $gpa < 3.5) {
-            $credits_limit = 22;
-        } else {
-            $credits_limit = 24;
-        }
+        $calculateGPA = new CalculateGPAController();
+        $calculateGPAResult = $calculateGPA->calculateGPA($courseData['student_id']);
+        $credits_limit = $calculateGPAResult[4]; // $credits_limit from returned array in calculateGPA() method
         /** END */
+
         if (StudentCourse::find($courseData['student_id'])->where('course_semester_taken', $courseData['course_semester_taken'])->firstWhere('status', 'enrolled')) { // If the selected courses has been accepted by the advisor
             return response()->json([
                 'status' => 0,
@@ -256,18 +190,18 @@ class StudentController extends Controller
         $course = Course::findOrFail($courseId);
 
         $totalEnrolledStudents = $course->student()
-        ->where([
-            ['course_id', '=', $courseId],
-            ['status', '=', 'taken'],
-        ])->count();
+            ->where([
+                ['course_id', '=', $courseId],
+                ['status', '=', 'taken'],
+            ])->count();
 
         $enrolledStudents = $course->student()
-        ->where([
-            ['course_id', '=', $courseId],
-            ['status', '=', 'taken'],
-        ])->get();
+            ->where([
+                ['course_id', '=', $courseId],
+                ['status', '=', 'taken'],
+            ])->get();
 
-        foreach($enrolledStudents as $enrolledStudent){
+        foreach ($enrolledStudents as $enrolledStudent) {
             $enrolledStudentData[] = [
                 'student_name' => $enrolledStudent->student_name,
                 'student_id_number' => $enrolledStudent->user->user_id_number,
@@ -275,11 +209,11 @@ class StudentController extends Controller
         }
 
         // Check whether the course is open, closed, or full
-        if($course->course_is_open === 0){
+        if ($course->course_is_open === 0) {
             $courseStatus = "Closed";
-        } elseif($totalEnrolledStudents === $course->course_capacity){
+        } elseif ($totalEnrolledStudents === $course->course_capacity) {
             $courseStatus = "Full";
-        } else{
+        } else {
             $courseStatus = "Open";
         }
 
