@@ -8,6 +8,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
 use App\Http\Middleware\IsAdmin;
+use App\Http\Middleware\IsAdvisor;
 
 /*
 |--------------------------------------------------------------------------
@@ -32,22 +33,32 @@ Route::post('login', [AuthController::class, 'authLogin']);
 
 Route::middleware('auth:sanctum')->group(function(){
     Route::middleware(IsAdmin::class)->group(function(){
-        Route::get('admin/courses-list', [AdminController::class, 'index']);
-        Route::post('admin/create-course', [AdminController::class, 'store']);
-        Route::post('admin/change-course-availability/{course_code}/{course_class}/{status}', [AdminController::class, 'changeCourseAvailability']);
+        Route::prefix('admin')->group(function () {
+            Route::get('/courses-list', [AdminController::class, 'index']);
+            Route::post('/create-course', [AdminController::class, 'store']);
+            Route::post('/change-course-availability/{course_code}/{course_class}/{status}', [AdminController::class, 'changeCourseAvailability']);
+        });
     });
-    Route::get('student', [StudentController::class, 'index']);
-    Route::get('student/courses', [StudentController::class, 'availableCourses']);
-    Route::post('student/take-course', [StudentController::class, 'takeCourse']);
-    // Route::get('student/drop-course/{course_id}', [StudentController::class, 'dropCourse']);
-    Route::delete('student/drop-course/{course_id}', [StudentController::class, 'dropCourse']);
-    Route::get('student/current-courses', [StudentController::class, 'showCurrentCourses']);
-    Route::get('student/course-detail/{course_id}', [StudentController::class, 'showCourseDetail']);
 
-    Route::get('advisor', [AdvisorController::class, 'index']);
-    Route::get('advisor/student-detail/{student_id}', [AdvisorController::class, 'showStudentDetail']);
-    Route::patch('advisor/accept-student-courses/{student_id}', [AdvisorController::class, 'acceptCourses']);
-    Route::patch('advisor/cancel-student-courses/{student_id}', [AdvisorController::class, 'cancelAcceptCourses']);
-    Route::post('advisor/take-student-course/{student_id}', [AdvisorController::class, 'takeCourse']);
-    Route::delete('advisor/drop-student-course/{student_id}/{course_id}', [AdvisorController::class, 'dropCourse']);
+    Route::middleware(IsAdvisor::class)->group(function(){
+        Route::prefix('advisor')->group(function () {
+            Route::get('/', [AdvisorController::class, 'index']);
+            Route::get('/student-detail/{student_id}', [AdvisorController::class, 'showStudentDetail']);
+            Route::patch('/accept-student-courses/{student_id}', [AdvisorController::class, 'acceptCourses']);
+            Route::patch('/cancel-student-courses/{student_id}', [AdvisorController::class, 'cancelAcceptCourses']);
+            Route::post('/take-student-course/{student_id}', [AdvisorController::class, 'takeCourse']);
+            Route::delete('/drop-student-course/{student_id}/{course_id}', [AdvisorController::class, 'dropCourse']);
+        });
+    });
+
+    Route::prefix('student')->group(function () {
+        Route::get('/', [StudentController::class, 'index']);
+        Route::get('/courses', [StudentController::class, 'availableCourses']);
+        Route::post('/take-course', [StudentController::class, 'takeCourse']);
+        // Route::get('/drop-course/{course_id}', [StudentController::class, 'dropCourse']);
+        Route::delete('/drop-course/{course_id}', [StudentController::class, 'dropCourse']);
+        Route::get('/current-courses', [StudentController::class, 'showCurrentCourses']);
+        Route::get('/course-detail/{course_id}', [StudentController::class, 'showCourseDetail']);
+    });
+
 });
