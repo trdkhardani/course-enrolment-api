@@ -254,6 +254,11 @@ class AdvisorController extends Controller
                 'status' => $course,
                 'message' => "You are not the advisor of this student"
             ]);
+        } elseif ($course == null) {
+            return response()->json([
+                'status' => $course, // will return true or false
+                'message' => "Course not found or may have been accepted by you"
+            ], 409);
         }
 
         return response()->json([
