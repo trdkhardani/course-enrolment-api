@@ -44,7 +44,7 @@ class StudentController extends Controller
 
         $courses = Course::findOrFail($dept_id)->where('course_is_open', 1)->get();
 
-        $studentTotal = fn ($courseId) => StudentCourse::where('course_id', $courseId)->where('status', 'taken')->orWhere('status', 'enrolled')->count('course_id');
+        $studentTotal = fn($courseId) => StudentCourse::where('course_id', $courseId)->where('status', 'taken')->orWhere('status', 'enrolled')->count('course_id');
         // Query => SELECT COUNT(course_id) AS course_total_students FROM student_courses WHERE course_id LIKE $courseId AND status LIKE 'taken' AND status LIKE 'enrolled';
 
         foreach ($courses as $course) {
@@ -101,7 +101,7 @@ class StudentController extends Controller
         if (StudentCourse::find($courseData['student_id'])->where('course_semester_taken', $courseData['course_semester_taken'])->firstWhere('status', 'enrolled')) { // If the selected courses has been accepted by the advisor
             return response()->json([
                 'status' => 0,
-                'message' => "Your selected courses has already been accepted by your advisor"
+                'message' => "Your selected courses has already been accepted by your advisor. Ask your advisor to cancel enrolment"
             ], 409);
         } elseif ($studentCourses->where('course_code', $course->course_code)->isNotEmpty()) { // If course has already taken by the logged in student
             return response()->json([
@@ -115,6 +115,18 @@ class StudentController extends Controller
                 'testData2_credits_limit' => $credits_limit, // For debugging, will delete later
                 'testData2_sum_course_credits' => $studentCurrentCourses->sum('course_credits'), // For debugging, will delete later
                 'testData2_sum_selected_course_credits' => $course->course_credits, // For debugging, will delete later
+            ], 409);
+        } elseif ($course->course_is_enrichment === 0 && Student::findOrFail($courseData['student_id'])->department_id !== $course->department_id) { // If course is not an enrichment course
+            return response()->json([
+                'status' => 0,
+                'message' => "This course is not an enrichment course",
+                'course_code' => $course->course_code,
+            ], 409);
+        } elseif ($course->course_is_open === 0) { // If course is not open
+            return response()->json([
+                'status' => 0,
+                'message' => "This course is not available",
+                'course_code' => $course->course_code,
             ], 409);
         } elseif ( // If course is full
             $course->course_capacity <= StudentCourse::where('course_id', $courseData['course_id'])
