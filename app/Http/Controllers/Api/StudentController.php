@@ -86,37 +86,36 @@ class StudentController extends Controller
         $studentCurrentCourses = $studentCurrent->findOrFail($courseData['student_id'])->course()->where('course_semester_taken', $student->student_semester)->whereIn('status', ['taken', 'enrolled'])->get();
         /** END */
 
-        foreach ($studentCourses as $studentCourse) {
-            $courseCodeData = [
-                'course_code' => $studentCourse->course_code
-            ];
-        }
-
         /** Calculate GPA Credits Limit */
         $calculateGPA = new CalculateGPAController();
         $calculateGPAResult = $calculateGPA->calculateGPA($courseData['student_id']);
         $credits_limit = $calculateGPAResult[4]; // $credits_limit from returned array in calculateGPA() method
         /** END */
 
-        if (StudentCourse::find($courseData['student_id'])->where('course_semester_taken', $courseData['course_semester_taken'])->firstWhere('status', 'enrolled')) { // If the selected courses has been accepted by the advisor
+        $courseIsAccepted = StudentCourse::find($courseData['student_id'])
+            ->where('course_semester_taken', $courseData['course_semester_taken'])
+            ->firstWhere('status', 'enrolled');
+
+        $courseIsTaken = $studentCourses->where('course_code', $course->course_code)->isNotEmpty();
+
+        $studentDepartmentId = Student::findOrFail($courseData['student_id'])->department_id;
+
+        $courseIsFull = $course->course_capacity <= StudentCourse::where('course_id', $courseData['course_id'])
+            ->whereIn('status', ['taken', 'enrolled'])
+            ->count();
+
+        if ($courseIsAccepted) { // If the selected courses has been accepted by the advisor
             return response()->json([
                 'status' => 0,
                 'message' => "Your selected courses has already been accepted by your advisor. Ask your advisor to cancel enrolment"
             ], 409);
-        } elseif ($studentCourses->where('course_code', $course->course_code)->isNotEmpty()) { // If course has already taken by the logged in student
+        } elseif ($courseIsTaken) { // If course has already taken by the logged in student
             return response()->json([
                 'status' => 0,
                 'message' => "You are already taken this course",
                 'course_code' => $course->course_code,
-                // 'test' => Course::where('course_code', $course->course_code)->get()
-                'testLeft' => $course->course_code, // For debugging, will delete later
-                'testRight' => $courseCodeData['course_code'], // For debugging, will delete later
-                'testData' => $courseCodeData, // For debugging, will delete later
-                'testData2_credits_limit' => $credits_limit, // For debugging, will delete later
-                'testData2_sum_course_credits' => $studentCurrentCourses->sum('course_credits'), // For debugging, will delete later
-                'testData2_sum_selected_course_credits' => $course->course_credits, // For debugging, will delete later
             ], 409);
-        } elseif ($course->course_is_enrichment === 0 && Student::findOrFail($courseData['student_id'])->department_id !== $course->department_id) { // If course is not an enrichment course
+        } elseif ($course->course_is_enrichment === 0 &&  $studentDepartmentId->department_id !== $course->department_id) { // If course is not an enrichment course
             return response()->json([
                 'status' => 0,
                 'message' => "This course is not an enrichment course",
@@ -128,11 +127,7 @@ class StudentController extends Controller
                 'message' => "This course is not available",
                 'course_code' => $course->course_code,
             ], 409);
-        } elseif ( // If course is full
-            $course->course_capacity <= StudentCourse::where('course_id', $courseData['course_id'])
-            ->whereIn('status', ['taken', 'enrolled'])
-            ->count()
-        ) {
+        } elseif ($courseIsFull) { // If course is full
             return response()->json([
                 'status' => 0,
                 'message' => "This course is full",
@@ -187,31 +182,20 @@ class StudentController extends Controller
     }
 
     /**
-     * Store a newly created resource in storage.
-     */
-    public function store(Request $request)
-    {
-        //
-    }
-
-    /**
      * Display the specified resource.
      */
     public function showCourseDetail($courseId)
     {
         $course = Course::findOrFail($courseId);
 
-        $totalEnrolledStudents = $course->student()
-            ->where([
-                ['course_id', '=', $courseId],
-                ['status', '=', 'taken'],
-            ])->count();
+        // Find students who are currently taken or enrolled in the selected course
+        $courseStudent = $course->student()
+            ->where('course_id', $courseId)
+            ->whereIn('status', ['taken', 'enrolled']);
 
-        $enrolledStudents = $course->student()
-            ->where([
-                ['course_id', '=', $courseId],
-                ['status', '=', 'taken'],
-            ])->get();
+        $totalEnrolledStudents = $courseStudent->count();
+
+        $enrolledStudents = $courseStudent->get();
 
         foreach ($enrolledStudents as $enrolledStudent) {
             $enrolledStudentData[] = [
@@ -239,14 +223,6 @@ class StudentController extends Controller
     }
 
     /**
-     * Update the specified resource in storage.
-     */
-    public function update(Request $request, string $id)
-    {
-        //
-    }
-
-    /**
      * Remove the specified resource from storage.
      */
     public function dropCourse($courseId)
@@ -256,7 +232,6 @@ class StudentController extends Controller
             ->where('student_id', $studId)
             ->where('status', 'taken') // Can only drop course that the status is 'taken'
             ->delete();
-        // $course = Student::find($studId)->course()->detach($courseId); // Applies the same as $course
 
         if ($course == null) {
             return response()->json([

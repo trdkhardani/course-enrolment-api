@@ -15,7 +15,7 @@ use App\Http\Controllers\Others\CalculateGPAController;
 class AdvisorController extends Controller
 {
     /**
-     * Display a listing of the resource.
+     * See advisor's personal info
      */
     public function index()
     {
@@ -28,7 +28,7 @@ class AdvisorController extends Controller
         // Get logged in advisor's students
         $students = Student::where('advisor_id', $advisorId)->get();
 
-        foreach($students as $student){
+        foreach ($students as $student) {
             $studentData[] = [
                 'student_name' => $student->student_name,
                 'student_id_number' => $student->user->user_id_number,
@@ -42,6 +42,9 @@ class AdvisorController extends Controller
         ]);
     }
 
+    /**
+     * Enroll student's taken courses
+     */
     public function acceptCourses($studId)
     {
         $advisorId = Auth()->user()->advisor->advisor_id;
@@ -67,6 +70,9 @@ class AdvisorController extends Controller
         ]);
     }
 
+    /**
+     * Unenroll student's enrolled courses
+     */
     public function cancelAcceptCourses($studId)
     {
         $advisorId = Auth()->user()->advisor->advisor_id;
@@ -93,7 +99,7 @@ class AdvisorController extends Controller
     }
 
     /**
-     * Display the specified resource.
+     * See detailed info of a student
      */
     public function showStudentDetail($studId)
     {
@@ -103,9 +109,14 @@ class AdvisorController extends Controller
         // Find searched student in param
         $student = Student::findOrFail($studId);
 
+        // student's advisor_id
+        $studentAdvisorId = $student->advisor->advisor_id;
+
         // Check if the advisor has the searched student
-        if($student->advisor->advisor_id !== $advisorId){
-            abort(404, 'No student found');
+        if ($studentAdvisorId !== $advisorId) {
+            return response()->json([
+                'message' => 'No student found',
+            ], 404);
         }
 
         // Calculate GPA
@@ -122,15 +133,7 @@ class AdvisorController extends Controller
     }
 
     /**
-     * Update the specified resource in storage.
-     */
-    public function update(Request $request, string $id)
-    {
-        //
-    }
-
-    /**
-     * Store a newly created resource in storage.
+     * Take course(s) for a student
      */
     public function takeCourse(Request $request, $studId)
     {
@@ -156,61 +159,54 @@ class AdvisorController extends Controller
 
         /** Current Semester Courses */
         $studentCurrent = Student::findOrFail($courseData['student_id']);
-        $studentCurrentCourses = $studentCurrent->findOrFail($courseData['student_id'])->course()->where('course_semester_taken', $student->student_semester)->whereIn('status', ['taken', 'enrolled'])->get();
+        $studentCurrentCourses = $studentCurrent->findOrFail($courseData['student_id'])
+            ->course()
+            ->where('course_semester_taken', $student->student_semester)
+            ->whereIn('status', ['taken', 'enrolled'])
+            ->get();
         /** END */
 
-        foreach ($studentCourses as $studentCourse) {
-            $courseCodeData = [
-                'course_code' => $studentCourse->course_code
-            ];
-        }
+        $courseIsAccepted = StudentCourse::find($courseData['student_id'])
+            ->where('course_semester_taken', $courseData['course_semester_taken'])
+            ->firstWhere('status', 'enrolled');
 
-        /** Calculate GPA Credits Limit */
-        $calculateGPA = new CalculateGPAController();
-        $calculateGPAResult = $calculateGPA->calculateGPA($courseData['student_id']);
-        $credits_limit = $calculateGPAResult[4]; // $credits_limit from returned array in calculateGPA() method
-        /** END */
+        $courseIsTaken = $studentCourses->where('course_code', $course->course_code)->isNotEmpty();
 
-        if($advisorId !== $studentCourseAdvisorId){ // Check if the advisor has the selected student
+        $studentDepartmentId = Student::findOrFail($courseData['student_id'])->department_id;
+
+        $courseIsFull = $course->course_capacity <= StudentCourse::where('course_id', $courseData['course_id'])
+            ->whereIn('status', ['taken', 'enrolled'])
+            ->count();
+
+        if ($advisorId !== $studentCourseAdvisorId) { // Check if the advisor has the selected student
             return response()->json([
                 'status' => 0,
                 'message' => 'No student found',
             ]);
-        } elseif(StudentCourse::find($courseData['student_id'])->where('course_semester_taken', $courseData['course_semester_taken'])->firstWhere('status', 'enrolled')) { // If the selected courses has been accepted by the advisor
+        } elseif ($courseIsAccepted) { // If the selected courses has been accepted by the advisor
             return response()->json([
                 'status' => 0,
                 'message' => "The selected courses have already been accepted by you. Cancel first"
             ], 409);
-        } elseif ($studentCourses->where('course_code', $course->course_code)->isNotEmpty()) { // If course has already taken by the logged in student
+        } elseif ($courseIsTaken) { // If course has already taken by the logged in student
             return response()->json([
                 'status' => 0,
                 'message' => "This student is already taken this course",
                 'course_code' => $course->course_code,
-                // 'test' => Course::where('course_code', $course->course_code)->get()
-                'testLeft' => $course->course_code, // For debugging, will delete later
-                'testRight' => $courseCodeData['course_code'], // For debugging, will delete later
-                'testData' => $courseCodeData, // For debugging, will delete later
-                'testData2_credits_limit' => $credits_limit, // For debugging, will delete later
-                'testData2_sum_course_credits' => $studentCurrentCourses->sum('course_credits'), // For debugging, will delete later
-                'testData2_sum_selected_course_credits' => $course->course_credits, // For debugging, will delete later
             ], 409);
-        } elseif($course->course_is_enrichment === 0 && Student::findOrFail($courseData['student_id'])->department_id !== $course->department_id) { // If course is not an enrichment course
+        } elseif ($course->course_is_enrichment === 0 && $studentDepartmentId !== $course->department_id) { // If course is not an enrichment course
             return response()->json([
                 'status' => 0,
                 'message' => "This course is not an enrichment course",
                 'course_code' => $course->course_code,
             ], 409);
-        } elseif($course->course_is_open === 0) { // If course is not open
+        } elseif ($course->course_is_open === 0) { // If course is not open
             return response()->json([
                 'status' => 0,
                 'message' => "This course is not available",
                 'course_code' => $course->course_code,
             ], 409);
-        } elseif ( // If course is full
-            $course->course_capacity <= StudentCourse::where('course_id', $courseData['course_id'])
-            ->whereIn('status', ['taken', 'enrolled'])
-            ->count()
-        ) {
+        } elseif ($courseIsFull) { // If course is full
             return response()->json([
                 'status' => 0,
                 'message' => "This course is full",
@@ -233,23 +229,20 @@ class AdvisorController extends Controller
     }
 
     /**
-     * Remove the specified resource from storage.
+     * Drop course(s) for a student
      */
     public function dropCourse($studId, $courseId)
     {
         $advisorId = Auth()->user()->advisor->advisor_id;
 
-        // $student = Student::where('student_id', $studId)->firstWhere('advisor_id', $advisorId)->first();
-
         $studentCourseAdvisorId = StudentCourse::findOrFail($studId)->student->advisor->advisor_id;
-        // $studentCourseAdvisorDept = StudentCourse::findOrFail($courseId)->course->course_id;
 
         $course = StudentCourse::where('course_id', $courseId)
             ->where('student_id', $studId)
             ->where('status', 'taken')
             ->delete();
 
-        if($advisorId !== $studentCourseAdvisorId){
+        if ($advisorId !== $studentCourseAdvisorId) {
             return response()->json([
                 'status' => $course,
                 'message' => "You are not the advisor of this student"
@@ -265,8 +258,6 @@ class AdvisorController extends Controller
             'status' => $course,
             'message' => "Course dropped successfully",
             'advisor_id' => $advisorId,
-            'student_course_advisor_id' => $studentCourseAdvisorId, // For debugging, will delete later
-            // 'course_id' => $studentCourseAdvisorDept // For debugging, will delete later
         ]);
     }
 }
