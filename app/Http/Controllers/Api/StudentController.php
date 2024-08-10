@@ -14,7 +14,7 @@ use App\Http\Controllers\Others\CalculateGPAController;
 class StudentController extends Controller
 {
     /**
-     * Display a listing of the resource.
+     * See logged in student's personal info
      */
     public function index()
     {
@@ -38,18 +38,25 @@ class StudentController extends Controller
         ]);
     }
 
+    /**
+     * See all open and enrichment courses
+     */
     public function availableCourses()
     {
         $dept_id = Auth()->user()->student->department->department_id;
 
-        $courses = Course::findOrFail($dept_id)->where('course_is_open', 1)->get();
+        $courses = Course::where('department_id', $dept_id)->where('course_is_open', 1)->get();
 
-        $studentTotal = fn($courseId) => StudentCourse::where('course_id', $courseId)->where('status', 'taken')->orWhere('status', 'enrolled')->count('course_id');
+        $enrichmentCourses = Course::where('course_is_enrichment', 1)->get();
+
+        $studentTotal = fn($courseId) => StudentCourse::where('course_id', $courseId)
+        ->where('status', 'taken')
+        ->orWhere('status', 'enrolled')
+        ->count('course_id');
         // Query => SELECT COUNT(course_id) AS course_total_students FROM student_courses WHERE course_id LIKE $courseId AND status LIKE 'taken' AND status LIKE 'enrolled';
 
         foreach ($courses as $course) {
             $courseData[] = [
-                // 'course_id' => $course->course_id,
                 'course_name' => $course->course_name,
                 'course_code' => $course->course_code,
                 'course_class' => $course->course_class,
@@ -61,10 +68,13 @@ class StudentController extends Controller
         return response()->json([
             'status' => 1,
             'courses' => $courseData,
-            // 'course_seat_left' => $studentTotal,
+            'enrichment_courses' => $enrichmentCourses,
         ]);
     }
 
+    /**
+     * Take course(s)
+     */
     public function takeCourse(Request $request)
     {
         $courseData = $request->validate([
@@ -83,7 +93,11 @@ class StudentController extends Controller
 
         /** Current Semester Courses */
         $studentCurrent = Student::findOrFail($courseData['student_id']);
-        $studentCurrentCourses = $studentCurrent->findOrFail($courseData['student_id'])->course()->where('course_semester_taken', $student->student_semester)->whereIn('status', ['taken', 'enrolled'])->get();
+        $studentCurrentCourses = $studentCurrent->findOrFail($courseData['student_id'])
+        ->course()
+        ->where('course_semester_taken', $student->student_semester)
+        ->whereIn('status', ['taken', 'enrolled'])
+        ->get();
         /** END */
 
         /** Calculate GPA Credits Limit */
@@ -148,12 +162,18 @@ class StudentController extends Controller
         ], 201);
     }
 
+    /**
+     * See currently taken or enrolled courses
+     */
     public function showCurrentCourses()
     {
         $studId = Auth()->user()->student->student_id;
         $studCurrentSemester = Auth()->user()->student->student_semester;
 
-        $currentCourses = Student::findOrFail($studId)->course()->where('course_semester_taken', $studCurrentSemester)->get();
+        $currentCourses = Student::findOrFail($studId)
+        ->course()
+        ->where('course_semester_taken', $studCurrentSemester)
+        ->get();
 
         $coursesEnrolmentPending = Student::findOrFail($studId)->course()->firstWhere('status', 'taken');
         $coursesEnrolmentAccepted = Student::findOrFail($studId)->course()->firstWhere('status', 'enrolled');
@@ -182,7 +202,7 @@ class StudentController extends Controller
     }
 
     /**
-     * Display the specified resource.
+     * See course detail
      */
     public function showCourseDetail($courseId)
     {
@@ -223,7 +243,7 @@ class StudentController extends Controller
     }
 
     /**
-     * Remove the specified resource from storage.
+     * Drop taken courses
      */
     public function dropCourse($courseId)
     {

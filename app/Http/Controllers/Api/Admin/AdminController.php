@@ -10,7 +10,7 @@ use App\Models\Course;
 class AdminController extends Controller
 {
     /**
-     * Display a listing of the resource.
+     * See all courses of respective department
      */
     public function index()
     {
@@ -24,9 +24,9 @@ class AdminController extends Controller
     }
 
     /**
-     * Store a newly created resource in storage.
+     * Add course for respective department
      */
-    public function store(Request $request)
+    public function addCourse(Request $request)
     {
         $courseData = $request->validate([
             'course_name' => 'required',
@@ -34,7 +34,7 @@ class AdminController extends Controller
             'course_class' => 'required',
             'course_capacity' => 'required',
             'course_credits' => 'required',
-            // 'department_id' => 'required'
+            'course_is_enrichment' => 'required'
         ]);
 
         $courseData['department_id'] = Auth()->user()->admin->department->department_id;
@@ -47,6 +47,9 @@ class AdminController extends Controller
         ]);
     }
 
+    /**
+     * Change course availability (open or closed)
+     */
     public function changeCourseAvailability($courseCode, $courseClass, $status)
     {
         $dept_id = Auth()->user()->admin->department->department_id;
@@ -72,29 +75,5 @@ class AdminController extends Controller
             'status' => 1,
             'data' => $course
         ], 200);
-    }
-
-    /**
-     * Display the specified resource.
-     */
-    public function show(string $id)
-    {
-        //
-    }
-
-    /**
-     * Update the specified resource in storage.
-     */
-    public function update(Request $request, string $id)
-    {
-        //
-    }
-
-    /**
-     * Remove the specified resource from storage.
-     */
-    public function destroy(string $id)
-    {
-        //
     }
 }

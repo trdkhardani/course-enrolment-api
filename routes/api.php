@@ -35,7 +35,7 @@ Route::middleware('auth:sanctum')->group(function(){
     Route::middleware(IsAdmin::class)->group(function(){
         Route::prefix('admin')->group(function () {
             Route::get('/courses-list', [AdminController::class, 'index']);
-            Route::post('/create-course', [AdminController::class, 'store']);
+            Route::post('/create-course', [AdminController::class, 'addCourse']);
             Route::post('/change-course-availability/{course_code}/{course_class}/{status}', [AdminController::class, 'changeCourseAvailability']);
         });
     });
