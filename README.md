@@ -49,16 +49,16 @@ Used for advisor users to see their student personal information. Consists of:
 * Current Semester
 * Current Semester Credits Limits (Based on the previous semester GPA)
 
-### GET http://<BASE_URL>/api/advisor/accept-student-courses/{student_id}
+### PATCH http://<BASE_URL>/api/advisor/accept-student-courses/{student_id}
 Used for advisor users to accept their student taken courses (enroll their student).
 
-### GET http://<BASE_URL>/api/advisor/cancel-student-courses/{student_id}
+### PATCH http://<BASE_URL>/api/advisor/cancel-student-courses/{student_id}
 Used for advisor users to cancel their student enrolled courses (unenroll their student).
 
-### GET http://<BASE_URL>/api/advisor/take-student-course/{student_id}
+### POST http://<BASE_URL>/api/advisor/take-student-course/{student_id}
 Used for advisor users to take a course for their student. Has the ability to bypass student's given credits limit, but the maximum credits is 24.
 
-### GET http://<BASE_URL>/api/advisor/drop-student-course/{student_id}/{course_id}
+### DELETE http://<BASE_URL>/api/advisor/drop-student-course/{student_id}/{course_id}
 Used for advisor users to drop a course for their student.
 
 ## To-Do
